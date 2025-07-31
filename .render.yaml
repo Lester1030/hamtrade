@@ -1,5 +1,5 @@
 services:
-  - type: web
+  - type: worker
     name: kill_trader_bot
     env: python
     plan: free
