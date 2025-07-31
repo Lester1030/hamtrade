@@ -149,7 +149,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🚦 Bot Status: {is_running}\n"
             f"💰 Balance: {balance:.8f} BTC\n"
             f"📈 BTC Price: ${btc_price}\n"
-            f"📈 Simulated Profit: {simulated_profit}"
+            f"📈 Profit: {simulated_profit}"
         )
 
         await query.edit_message_text(msg, reply_markup=get_main_menu(), parse_mode="Markdown")
