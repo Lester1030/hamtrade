@@ -66,10 +66,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_photo(
             photo=InputFile("header.jpg"),
-            caption="Welcome to AngryTrader"
+            caption="Welcome to KILLtrader"
         )
     except Exception:
-        await update.message.reply_text("Welcome to AngryTrader")
+        await update.message.reply_text("Welcome to KILLtrader")
 
     await update.message.reply_text("Choose an option:", reply_markup=get_main_menu())
 
