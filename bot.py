@@ -301,7 +301,7 @@ async def run_webserver():
 
 # --- MAIN ---
 
-async def main():
+async def async_main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -317,4 +317,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(async_main())
+    except KeyboardInterrupt:
+        pass
