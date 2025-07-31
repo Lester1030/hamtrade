@@ -277,7 +277,7 @@ async def run_webserver():
     while True:
         await asyncio.sleep(3600)
 
-def main():
+async def main_async():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -286,11 +286,11 @@ def main():
 
     app.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
 
-    # Start aiohttp webserver in background asyncio task
-    asyncio.create_task(run_webserver())
-
-    # Run bot polling (this will block and manage event loop)
-    app.run_polling()
+    # Run both the bot polling and the webserver concurrently in the same asyncio event loop
+    await asyncio.gather(
+        app.run_polling(),
+        run_webserver(),
+    )
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main_async())
