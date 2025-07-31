@@ -270,14 +270,14 @@ async def run_webserver():
     app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.environ.get("PORT", "8080"))
+    port = int(os.environ.get("PORT", "8000"))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     print(f"Webserver running on port {port}")
     while True:
         await asyncio.sleep(3600)
 
-async def main():
+def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -286,11 +286,11 @@ async def main():
 
     app.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
 
-    # Run polling and webserver concurrently
-    await asyncio.gather(
-        app.run_polling(),
-        run_webserver(),
-    )
+    # Start aiohttp webserver in background asyncio task
+    asyncio.create_task(run_webserver())
+
+    # Run bot polling (this will block and manage event loop)
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
