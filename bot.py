@@ -1,23 +1,40 @@
 import os
-import requests
 import random
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler,
-    MessageHandler, ContextTypes, filters
+import requests
+import asyncio
+from aiohttp import web
+
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputFile,
 )
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
+
+# --- CONFIG ---
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("No BOT_TOKEN found in environment variables")
+    raise RuntimeError("BOT_TOKEN environment variable is not set")
 
 SECRET_INJECT_TRIGGER = "🦍 banana_mode_69420"
+
+# --- DATA STORE ---
 
 user_balances = {}
 user_states = {}
 pending_inject = {}
 pending_withdrawal = {}
 
+# --- UI ---
 
 def get_main_menu():
     keyboard = [
@@ -50,6 +67,7 @@ def get_strategy_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
+# --- HANDLERS ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -84,7 +102,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     elif action == "deposit":
-        user_balances[user_id] += 0.005
         await query.edit_message_text(
             "💼 This is your deposit address (Minimum deposit: 0.001 BTC)",
             reply_markup=get_main_menu()
@@ -132,7 +149,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         is_running = "✅ Running" if state["running"] else "⛔️ Not Running"
         strategy = state["strategy"] if state["strategy"] else "None Selected"
-        simulated_profit = "$0.00"  # placeholder, extend if you want
+        simulated_profit = "$0.00"  # placeholder
 
         msg = (
             f"📊 *Trading Monitor*\n"
@@ -263,62 +280,41 @@ async def profit_simulator_tick(context: ContextTypes.DEFAULT_TYPE):
             user_balances[user_id] = user_balances.get(user_id, 0.0) + profit
 
 
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_secret_inject))
-
-    # Schedule profit simulator every 5 seconds (approximate; can randomize inside)
-    app.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
-
-    app.run_polling()
-
-
-if __name__ == "__main__":
-    main()
-
-import asyncio
-from aiohttp import web
-import os
+# --- WEB SERVER ---
 
 async def handle(request):
     return web.Response(text="OK")
+
 
 async def run_webserver():
     app = web.Application()
     app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", "8000"))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     print(f"Webserver running on port {port}")
-    # Run forever
     while True:
         await asyncio.sleep(3600)
 
+
+# --- MAIN ---
+
 async def main():
-    # Start Telegram bot and webserver concurrently
-    from telegram.ext import ApplicationBuilder
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
-
-    # Add your handlers here...
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_secret_inject))
 
-    # Start profit simulator with job queue
     app.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
 
-    # Run bot polling and webserver concurrently
     await asyncio.gather(
         app.run_polling(),
         run_webserver(),
     )
 
+
 if __name__ == "__main__":
     asyncio.run(main())
-
