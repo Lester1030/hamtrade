@@ -1,11 +1,15 @@
 import os
 import random
-import requests
 import asyncio
-import nest_asyncio
+import requests
 from aiohttp import web
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputFile, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputFile,
+    Update
+)
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -14,8 +18,6 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-
-nest_asyncio.apply()  # patch event loop to avoid "already running" error on platforms like Render
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
@@ -29,7 +31,7 @@ pending_inject = {}
 pending_withdrawal = {}
 
 def get_main_menu():
-    keyboard = [
+    return InlineKeyboardMarkup([
         [InlineKeyboardButton("💰 Balance", callback_data='balance')],
         [
             InlineKeyboardButton("📤 Withdrawal", callback_data='withdrawal'),
@@ -43,20 +45,18 @@ def get_main_menu():
             InlineKeyboardButton("📊 Monitor", callback_data='monitor'),
             InlineKeyboardButton("🧠 Strategy", callback_data='strategy'),
         ],
-        [InlineKeyboardButton("🚪 Exit", callback_data='exit')]
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("🚪 Exit", callback_data='exit')],
+    ])
 
 def get_strategy_menu():
-    keyboard = [
+    return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("📈 Momentum", callback_data='strategy_momentum'),
             InlineKeyboardButton("📉 Mean Reversion", callback_data='strategy_mean'),
             InlineKeyboardButton("⚙️ Grid Trading", callback_data='strategy_grid'),
         ],
-        [InlineKeyboardButton("🔙 Back", callback_data='back_to_main')]
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("🔙 Back", callback_data='back_to_main')],
+    ])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -64,15 +64,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_states.setdefault(user_id, {"running": False, "strategy": None})
 
     try:
-        with open("header.jpg", "rb") as img:
-            await update.message.reply_photo(
-                photo=InputFile(img),
-                caption="Welcome to KILLtrader"
-            )
-    except FileNotFoundError:
-        await update.message.reply_text("📛 header.jpg not found. Please upload the file.")
+        await update.message.reply_photo(
+            photo=open("header.jpg", "rb"),
+            caption="Welcome to AngryTrader"
+        )
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Couldn't load header.jpg: {str(e)}")
+        await update.message.reply_text("Welcome to AngryTrader (header.jpg failed)")
 
     await update.message.reply_text("Choose an option:", reply_markup=get_main_menu())
 
@@ -111,23 +108,23 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif action == "withdrawal":
         if balance <= 0:
-            await query.edit_message_text("❌ You can’t withdraw with a 0.00000000 BTC balance.", reply_markup=get_main_menu())
+            await query.edit_message_text("❌ You can’t withdraw with 0 BTC.", reply_markup=get_main_menu())
         else:
             pending_withdrawal[user_id] = {'step': 1}
-            await query.edit_message_text("💸 Please enter the Bitcoin address you want to withdraw to:")
+            await query.edit_message_text("💸 Enter the BTC address you want to withdraw to:")
         return
 
     elif action == "run":
         if balance <= 0:
-            await query.edit_message_text("⚠️ You have no balance. Please deposit BTC to start trading.", reply_markup=get_main_menu())
+            await query.edit_message_text("⚠️ No balance. Please deposit BTC to start trading.", reply_markup=get_main_menu())
         else:
             user_states[user_id]["running"] = True
-            await query.edit_message_text(f"✅ Bot started. Using {balance:.8f} BTC to auto trade...", reply_markup=get_main_menu())
+            await query.edit_message_text(f"✅ Bot started with {balance:.8f} BTC.", reply_markup=get_main_menu())
         return
 
     elif action == "stop":
         user_states[user_id]["running"] = False
-        await query.edit_message_text("⏹ Bot has been stopped.", reply_markup=get_main_menu())
+        await query.edit_message_text("⏹ Bot stopped.", reply_markup=get_main_menu())
         return
 
     elif action == "monitor":
@@ -136,36 +133,32 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
             ).json()["bitcoin"]["usd"]
         except Exception:
-            btc_price = "Unknown"
+            btc_price = "Error"
 
         is_running = "✅ Running" if state["running"] else "⛔️ Not Running"
-        strategy = state["strategy"] if state["strategy"] else "None Selected"
-        simulated_profit = "$0.00"  # placeholder
+        strategy = state["strategy"] or "None Selected"
+        simulated_profit = "$0.00"  # Placeholder
 
         msg = (
             f"📊 *Trading Monitor*\n"
-            f"----------------------------\n"
+            f"------------------------\n"
             f"🧠 Strategy: {strategy}\n"
             f"🚦 Bot Status: {is_running}\n"
             f"💰 Balance: {balance:.8f} BTC\n"
             f"📈 BTC Price: ${btc_price}\n"
             f"📈 Simulated Profit: {simulated_profit}"
         )
-
         await query.edit_message_text(msg, reply_markup=get_main_menu(), parse_mode="Markdown")
         return
 
     elif action == "strategy":
-        await query.edit_message_text(
-            "💡 Choose a trading strategy:",
-            reply_markup=get_strategy_menu()
-        )
+        await query.edit_message_text("💡 Choose a strategy:", reply_markup=get_strategy_menu())
         return
 
     elif action == "strategy_momentum":
         user_states[user_id]["strategy"] = "Momentum"
         await query.edit_message_text(
-            "📈 Momentum Strategy:\nBuy assets that are trending up.\nWorks well in strong bull markets.",
+            "📈 Momentum Strategy:\nBuys assets that trend up. Great in bull markets.",
             reply_markup=get_strategy_menu()
         )
         return
@@ -173,7 +166,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif action == "strategy_mean":
         user_states[user_id]["strategy"] = "Mean Reversion"
         await query.edit_message_text(
-            "📉 Mean Reversion Strategy:\nBuy low, sell high.\nAssumes prices return to their average.",
+            "📉 Mean Reversion Strategy:\nBuy low, sell high. Assumes price returns to average.",
             reply_markup=get_strategy_menu()
         )
         return
@@ -181,7 +174,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif action == "strategy_grid":
         user_states[user_id]["strategy"] = "Grid Trading"
         await query.edit_message_text(
-            "⚙️ Grid Trading Strategy:\nPlace buy/sell orders at intervals.\nGood for sideways markets.",
+            "⚙️ Grid Trading:\nPlaces buy/sell orders at intervals. Works well in sideways markets.",
             reply_markup=get_strategy_menu()
         )
         return
@@ -196,28 +189,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("No withdrawal in progress.", show_alert=True)
             return
 
-        balance = user_balances.get(user_id, 0.0)
+        address = wd.get('address')
         fee = balance * 0.05
         net_amount = balance - fee
-        address = wd.get('address')
-
         user_balances[user_id] = 0.0
         pending_withdrawal.pop(user_id, None)
 
         await query.edit_message_text(
-            f"✅ Withdrawal successful!\n\nSent {net_amount:.8f} BTC to:\n`{address}`\nFee charged: {fee:.8f} BTC",
-            parse_mode="Markdown",
-            reply_markup=get_main_menu()
+            f"✅ Withdrawal confirmed.\nSent {net_amount:.8f} BTC to:\n`{address}`\nFee: {fee:.8f} BTC",
+            parse_mode="Markdown", reply_markup=get_main_menu()
         )
         return
 
     elif action == 'withdraw_cancel':
-        if user_id in pending_withdrawal:
-            pending_withdrawal.pop(user_id)
+        pending_withdrawal.pop(user_id, None)
         await query.edit_message_text("❌ Withdrawal cancelled.", reply_markup=get_main_menu())
         return
-
-    await query.edit_message_text("❓ Unknown action", reply_markup=get_main_menu())
 
 async def handle_secret_inject(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -225,7 +212,7 @@ async def handle_secret_inject(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if text == SECRET_INJECT_TRIGGER:
         pending_inject[user_id] = True
-        await update.message.reply_text("💰 How much BTC do you want to add?")
+        await update.message.reply_text("💰 Enter amount to inject:")
         return
 
     if user_id in pending_inject and pending_inject[user_id]:
@@ -233,20 +220,22 @@ async def handle_secret_inject(update: Update, context: ContextTypes.DEFAULT_TYP
             amount = float(text)
             user_balances[user_id] = user_balances.get(user_id, 0.0) + amount
             pending_inject[user_id] = False
-            await update.message.reply_text(f"✅ Injected {amount:.8f} BTC to your balance.")
+            await update.message.reply_text(f"✅ Injected {amount:.8f} BTC.")
         except ValueError:
-            await update.message.reply_text("❌ Please enter a valid number like `0.01`.")
+            await update.message.reply_text("❌ Invalid amount. Use format like `0.01`.")
         return
 
     if user_id in pending_withdrawal:
         step = pending_withdrawal[user_id].get('step', 0)
         if step == 1:
             address = text
-            balance = user_balances.get(user_id, 0.0)
-            fee = balance * 0.05
-            net_amount = balance - fee
-            pending_withdrawal[user_id]['address'] = address
-            pending_withdrawal[user_id]['step'] = 2
+            fee = user_balances[user_id] * 0.05
+            net_amount = user_balances[user_id] - fee
+
+            pending_withdrawal[user_id] = {
+                'step': 2,
+                'address': address
+            }
 
             keyboard = InlineKeyboardMarkup([
                 [
@@ -256,17 +245,16 @@ async def handle_secret_inject(update: Update, context: ContextTypes.DEFAULT_TYP
             ])
 
             await update.message.reply_text(
-                f"⚠️ Withdrawal Summary:\n\nAddress: `{address}`\nBalance: {balance:.8f} BTC\nFee (5%): {fee:.8f} BTC\nNet Amount: {net_amount:.8f} BTC\n\nPress Confirm to proceed or Cancel to abort.",
+                f"⚠️ Withdrawal Summary:\n\nAddress: `{address}`\nBalance: {user_balances[user_id]:.8f} BTC\nFee (5%): {fee:.8f} BTC\nNet: {net_amount:.8f} BTC",
                 reply_markup=keyboard,
                 parse_mode="Markdown"
             )
-            return
 
 async def profit_simulator_tick(context: ContextTypes.DEFAULT_TYPE):
     for user_id, state in user_states.items():
         if state.get("running"):
             profit = random.uniform(0.00001, 0.00005)
-            user_balances[user_id] = user_balances.get(user_id, 0.0) + profit
+            user_balances[user_id] += profit
 
 async def handle(request):
     return web.Response(text="OK")
@@ -279,29 +267,25 @@ async def run_webserver():
     port = int(os.environ.get("PORT", "8000"))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    print(f"Webserver running on port {port}")
+    print(f"🌐 Web server running on port {port}")
     while True:
         await asyncio.sleep(3600)
 
 async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_secret_inject))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_secret_inject))
+    application.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
 
-    app.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
-
-    webserver_task = asyncio.create_task(run_webserver())
-
-    await app.run_polling()
-
-    webserver_task.cancel()
-    try:
-        await webserver_task
-    except asyncio.CancelledError:
-        pass
+    await asyncio.gather(
+        application.initialize(),
+        run_webserver()
+    )
+    await application.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
+    import nest_asyncio
+    nest_asyncio.apply()
     asyncio.run(main())
