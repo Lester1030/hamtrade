@@ -270,7 +270,7 @@ async def run_webserver():
     app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.environ.get("PORT", "8000"))
+    port = int(os.environ.get("PORT", "8080"))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     print(f"Webserver running on port {port}")
@@ -286,14 +286,11 @@ async def main():
 
     app.job_queue.run_repeating(profit_simulator_tick, interval=5, first=5)
 
-    # Run bot polling and webserver concurrently
+    # Run polling and webserver concurrently
     await asyncio.gather(
         app.run_polling(),
-        run_webserver()
+        run_webserver(),
     )
 
 if __name__ == "__main__":
-    import nest_asyncio
-    nest_asyncio.apply()
-    import asyncio
     asyncio.run(main())
