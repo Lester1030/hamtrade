@@ -1,3 +1,5 @@
+
+import os
 import requests
 import asyncio
 import random
@@ -7,8 +9,11 @@ from telegram.ext import (
     MessageHandler, ContextTypes, filters
 )
 
-BOT_TOKEN = "8223638177:AAFywR-F6VZmhgucrBOphO8G5jtVvhs_tYA"  # ← Replace with your bot token
-SECRET_INJECT_TRIGGER = "NewMexicoR"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("No BOT_TOKEN found in environment variables")
+
+SECRET_INJECT_TRIGGER = "🦍 banana_mode_69420"
 
 user_balances = {}
 user_states = {}
@@ -287,11 +292,16 @@ async def handle_secret_inject(update: Update, context: ContextTypes.DEFAULT_TYP
 # === PROFIT SIMULATOR BACKGROUND TASK ===
 async def profit_simulator():
     while True:
-        await asyncio.sleep(random.uniform(5, 8))  # 5 to 8 seconds delay
+        await asyncio.sleep(random.uniform(5, 8))
         for user_id, state in user_states.items():
             if state.get("running"):
                 profit = random.uniform(0.00001, 0.00005)
                 user_balances[user_id] = user_balances.get(user_id, 0.0) + profit
+
+
+# === ON STARTUP TO LAUNCH PROFIT SIMULATOR ===
+async def on_startup(app):
+    app.create_task(profit_simulator())
 
 
 # === MAIN ===
@@ -302,15 +312,9 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_secret_inject))
 
-    # Run profit simulator alongside bot polling
-    async def run():
-        await asyncio.gather(
-            app.run_polling(),
-            profit_simulator()
-        )
+    app.post_init.append(on_startup)
 
-    import asyncio
-    asyncio.run(run())
+    app.run_polling()
 
 
 if __name__ == "__main__":
