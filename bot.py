@@ -12,6 +12,7 @@ from telegram.ext import (
 )
 import nest_asyncio
 
+running_bots = set()
 nest_asyncio.apply()  # Fix "event loop already running"
 user_strategies = {}  # stores per-user selected strategy
 STRATEGIES = ["Aggressive", "Conservative", "Balanced", "Experimental"]  # example strategies
@@ -146,9 +147,9 @@ elif cmd == "run":
         await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
         log_action(uid, "Started Bot")
 
-    elif cmd == "stop":
-        await query.edit_message_text("Bot Stopped.", reply_markup=get_main_menu())
-        log_action(uid, "Stopped Bot")
+elif cmd == "stop":
+    await query.edit_message_text("Bot Stopped.", reply_markup=get_main_menu())
+    log_action(uid, "Stopped Bot")
 
     elif cmd == "monitor":
         strategy = user_strategies.get(uid, "None")
@@ -286,14 +287,14 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 async def profit_loop(context: ContextTypes.DEFAULT_TYPE):
-    for uid_str in data['users']:
+    for uid in running_bots:
         try:
-            uid = int(uid_str)
             current_bal = get_balance(uid)
             gain = random.uniform(0.00001, 0.00003)
             set_balance(uid, current_bal + gain)
         except:
             continue
+
 
 async def handle(request):
     return web.Response(text="OK")
@@ -321,6 +322,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
