@@ -149,9 +149,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "monitor":
         try:
-            price = requests.get("https://api.coinbase.com/v2/prices/BTC-USD/spot").json()['bitcoin']['usd']
+            price = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT").json()['bitcoin']['usd']
         except:
-            price = "unknown"
+            price = " Error: 404"
         strategy = user_strategies.get(uid, "None")
         await query.edit_message_text(
             f"📊 BTC Price: ${price}\nYour Balance: {balance:.8f} BTC\n🧠 Strategy: {strategy}",
@@ -322,4 +322,5 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
