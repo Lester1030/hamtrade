@@ -87,12 +87,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = query.from_user.id
     data['users'].setdefault(str(uid), {"balance": 0.0})
     balance = get_balance(uid)
-    
+
     match query.data:
         case "balance":
             await query.edit_message_text(f"💰 Balance: {balance:.8f} BTC", reply_markup=get_main_menu())
         case "deposit":
-await query.edit_message_text("Send BTC to:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`", parse_mode="Markdown", reply_markup=get_main_menu())
+            await query.edit_message_text("Send BTC to:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`", parse_mode="Markdown", reply_markup=get_main_menu())
         case "withdrawal":
             if not is_admin(uid):
                 await query.edit_message_text("❌ Transaction failed.", reply_markup=get_main_menu())
@@ -133,7 +133,7 @@ await query.edit_message_text("Send BTC to:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm
         case "view_log":
             logs = data.get("activity_log", [])[-10:]
             log_msg = "\n".join([f"{log['timestamp']} - {log['action']} - {log['user_id']}" for log in logs]) or "No logs."
-            await query.edit_message_text(f"\U0001F4D3 Recent Logs:\n{log_msg}", reply_markup=get_admin_menu())
+            await query.edit_message_text(f"📓 Recent Logs:\n{log_msg}", reply_markup=get_admin_menu())
         case "close_admin":
             admin_mode[uid] = False
             await query.edit_message_text("Admin panel closed.")
