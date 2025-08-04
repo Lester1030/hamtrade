@@ -140,16 +140,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pending_withdrawal.pop(uid, None)
         await query.edit_message_text("❌ Withdrawal cancelled.", reply_markup=get_main_menu())
 
-elif cmd == "run":
-    if balance <= 0:
-        await query.edit_message_text("❌ You cannot run the bot because your balance is 0.", reply_markup=get_main_menu())
-    else:
-        await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
-        log_action(uid, "Started Bot")
-
-elif cmd == "stop":
-    await query.edit_message_text("Bot Stopped.", reply_markup=get_main_menu())
-    log_action(uid, "Stopped Bot")
+    elif cmd == "run":
+        if balance <= 0:
+            await query.edit_message_text("❌ You cannot run the bot because your balance is 0.", reply_markup=get_main_menu())
+        else:
+            running_bots.add(uid)
+            await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
+            log_action(uid, "Started Bot")
+    elif cmd == "stop":
+        running_bots.discard(uid)
+        await query.edit_message_text("Bot Stopped.", reply_markup=get_main_menu())
+        log_action(uid, "Stopped Bot")
 
     elif cmd == "monitor":
         strategy = user_strategies.get(uid, "None")
@@ -322,6 +323,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
