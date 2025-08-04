@@ -148,13 +148,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         log_action(uid, "Stopped Bot")
 
     elif cmd == "monitor":
-        try:
-            price = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT").json()['bitcoin']['usd']
-        except:
-            price = " Error: 404"
         strategy = user_strategies.get(uid, "None")
         await query.edit_message_text(
-            f"📊 BTC Price: ${price}\nYour Balance: {balance:.8f} BTC\n🧠 Strategy: {strategy}",
+            f"Your Balance: {balance:.8f} BTC\n🧠 Strategy: {strategy}",
             reply_markup=get_main_menu()
         )
 
@@ -322,5 +318,6 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
