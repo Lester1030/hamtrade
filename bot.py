@@ -113,7 +113,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "deposit":
         await query.edit_message_text(
-            "Your bots wallet address:\n`bc1qp5efu0wuq3zev4rctu8j0td5zmrgrm75459a0y`",
+            "Your bots wallet address:\n`bc1q02dcj7722y8gawmlphstaaz3l2kyhzursn0sjh`",
             parse_mode="Markdown",
             reply_markup=get_main_menu()
         )
@@ -323,6 +323,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
