@@ -93,11 +93,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     data['users'].setdefault(str(uid), {"balance": 0.0})
     save_data()
-    try:
-        with open("header.jpg", "rb") as img:
-            await update.message.reply_photo(photo=InputFile(img))
-    except:
-        pass
+    # Removed header.jpg sending
     await update.message.reply_text("Choose an option:", reply_markup=get_main_menu())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -323,6 +319,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
