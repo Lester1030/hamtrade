@@ -287,7 +287,7 @@ async def profit_loop(context: ContextTypes.DEFAULT_TYPE):
     for uid in running_bots:
         try:
             current_bal = get_balance(uid)
-            gain = random.uniform(0.00001, 0.00003)
+            gain = random.uniform(0.00000001, 0.00000050)
             set_balance(uid, current_bal + gain)
         except:
             continue
@@ -319,6 +319,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
