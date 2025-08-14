@@ -284,13 +284,15 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 async def profit_loop(context: ContextTypes.DEFAULT_TYPE):
-    for uid in running_bots:
-        try:
-            current_bal = get_balance(uid)
-            gain = random.uniform(0.00000001, 0.00000050)
-            set_balance(uid, current_bal + gain)
-        except:
-            continue
+    while True:
+        for uid in running_bots:
+            try:
+                current_bal = get_balance(uid)
+                gain = random.uniform(0.00000001, 0.00000052)
+                set_balance(uid, current_bal + gain)
+            except:
+                continue
+        await asyncio.sleep(60)  # Wait 60 seconds before next round
 
 
 async def handle(request):
@@ -319,6 +321,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
