@@ -150,7 +150,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if cmd == "balance":
-        await query.edit_message_text(f"💰 Balance: {balance:.8f} BTC\n📈 Profit: {profit:.8f} BTC", reply_markup=get_back_main_button())
+        await query.edit_message_text(f"*Balance:* {balance:.8f} BTC\n*Profit:* {profit:.8f} BTC", reply_markup=get_back_main_button())
 
     elif cmd == "deposit":
         await query.edit_message_text(
@@ -402,3 +402,4 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
