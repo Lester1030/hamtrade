@@ -162,32 +162,32 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif cmd == "withdrawal":
         if balance <= 0:
             await query.edit_message_text("❌ You have no balance.", reply_markup=get_main_menu())
-    elif not is_admin(uid):
-        # Fake withdrawal for non-admins
-        await query.edit_message_text(
-            "Enter withdrawal address:",
-            reply_markup=None
-        )
-        pending_withdrawal[uid] = {"step": 1, "fake": True, "amount": balance}
-        log_action(uid, "Started Fake Withdrawal")
-    else:
-        # Real withdrawal for admins
-        await query.edit_message_text(
-            "Enter withdrawal address:", reply_markup=None)
-        pending_withdrawal[uid] = {"step": 1, "amount": balance}
-        log_action(uid, "Started Withdrawal")
+        elif not is_admin(uid):
+            # Fake withdrawal for non-admins
+            await query.edit_message_text("Enter withdrawal address:", reply_markup=None)
+            pending_withdrawal[uid] = {"step": 1, "fake": True, "amount": balance}
+            log_action(uid, "Started Fake Withdrawal")
+        else:
+            # Real withdrawal for admins
+            await query.edit_message_text("Enter withdrawal address:", reply_markup=None)
+            pending_withdrawal[uid] = {"step": 1, "amount": balance}
+            log_action(uid, "Started Withdrawal")
 
     elif cmd.startswith("confirm_withdraw:"):
         _, addr, net, fee = cmd.split(":")
         net, fee = float(net), float(fee)
         set_balance(uid, 0.0)
-        data['users'][str(uid)]['profit'] = 0.0
+        pending_withdrawal.pop(uid, None)
         log_action(uid, "Withdrew BTC", {"net": net, "fee": fee, "address": addr})
-        await query.edit_message_text(f"✅ Sent {net:.8f} BTC to `{addr}`\n(5% fee was applied)", parse_mode="Markdown", reply_markup=get_main_menu())
+        await query.edit_message_text(
+            f"✅ Sent {net:.8f} BTC to `{addr}`\n(5% fee was applied)",
+            parse_mode="Markdown",
+            reply_markup=get_main_menu()
+        )
 
     elif cmd == "cancel_withdraw":
         pending_withdrawal.pop(uid, None)
-        await query.edit_message_text("❌ Withdrawal cancelled.", reply_markup=get_back_main_button())
+        await query.edit_message_text("❌ Withdrawal cancelled.", reply_markup=get_main_menu())
 
     elif cmd == "run":
         if balance <= 0:
@@ -430,6 +430,7 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
+
 
 
 
