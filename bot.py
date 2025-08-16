@@ -150,7 +150,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if cmd == "balance":
-        await query.edit_message_text(f"*Balance:* {balance:.8f} BTC\n*Profit:* {profit:.8f} BTC", reply_markup=get_back_main_button())
+        await query.edit_message_text(f"'Balance:' {balance:.8f} BTC\n'Profit:' {profit:.8f} BTC", reply_markup=get_back_main_button())
 
     elif cmd == "deposit":
         await query.edit_message_text(
@@ -198,7 +198,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         strategy = user_strategies.get(uid, "None")
         pct = (profit / (balance - profit) * 100) if balance - profit > 0 else 0.0
         await query.edit_message_text(
-            f"*Balance:* {balance:.8f} BTC\n*Profit:* {profit:.8f} BTC (+{pct:.2f}%)\n*Strategy:* {strategy}",
+            f"'Balance:' {balance:.8f} BTC\n'Profit:' {profit:.8f} BTC (+{pct:.2f}%)\n'Strategy:' {strategy}",
             reply_markup=get_back_main_button()
         )
 
@@ -213,7 +213,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"Strategy set to: {selected}", reply_markup=get_back_main_button())
 
     elif cmd == "help":
-        await query.edit_message_text("*Welcome To CoinPilotAI!*\n    This is a the #1 MemeCoin Trading Bot on Telegram. We have payed out over $600,000 to users in the past 2 years. To start using our bot, you need to fund your account with Bitcoin. We only accept Bitcoin payments for faster processing & security reasons. Your bitcoin will be converted to coins like Solana for purchasing MemeCoins. Once your account is funded, you select one of our 4 100% free strategy configurations. When you select a strategy, you can start the bot and use the monitor to see what the bot is doing.", reply_markup=get_back_main_button())
+        await query.edit_message_text("'Welcome To CoinPilotAI!'\n    This is a the #1 MemeCoin Trading Bot on Telegram. We have payed out over $600,000 to users in the past 2 years. To start using our bot, you need to fund your account with Bitcoin. We only accept Bitcoin payments for faster processing & security reasons. Your bitcoin will be converted to coins like Solana for purchasing MemeCoins. Once your account is funded, you select one of our 4 100% free strategy configurations. When you select a strategy, you can start the bot and use the monitor to see what the bot is doing.", reply_markup=get_back_main_button())
 
     elif cmd == "exit":
         await query.edit_message_text("Goodbye!")
@@ -402,4 +402,5 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
