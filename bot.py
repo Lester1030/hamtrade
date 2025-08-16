@@ -159,9 +159,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_back_main_button()
         )
 
-  elif cmd == "withdrawal":
-    if balance <= 0:
-        await query.edit_message_text("❌ You have no balance.", reply_markup=get_main_menu())
+    elif cmd == "withdrawal":
+        if balance <= 0:
+            await query.edit_message_text("❌ You have no balance.", reply_markup=get_main_menu())
     elif not is_admin(uid):
         # Fake withdrawal for non-admins
         await query.edit_message_text(
@@ -430,6 +430,7 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
+
 
 
 
