@@ -359,18 +359,16 @@ strategy_ranges = {
 }
 
 async def profit_loop(context: ContextTypes.DEFAULT_TYPE):
-    while True:
-        for uid in running_bots:
-            try:
-                current_bal = get_balance(uid)
-                strategy = user_strategies.get(uid, "Diamond Hands")
-                low, high = strategy_ranges.get(strategy, (0.00000001, 0.0000002))
-                gain = random.uniform(low, high)
-                set_balance(uid, current_bal + gain)
-                add_profit(uid, gain)
-            except:
-                continue
-        await asyncio.sleep(60)
+    for uid in running_bots:
+        try:
+            current_bal = get_balance(uid)
+            strategy = user_strategies.get(uid, "Diamond Hands")
+            low, high = strategy_ranges.get(strategy, (0.00000001, 0.0000002))
+            gain = random.uniform(low, high)
+            set_balance(uid, current_bal + gain)
+            add_profit(uid, gain)
+        except:
+            continue
 
 # ----------------------------
 # Webserver
@@ -403,6 +401,7 @@ async def start_bot():
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
+
 
 
 
