@@ -158,7 +158,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cmd = query.data
 
     if cmd == "back_main":
-        await query.edit_message_text(reply_markup=get_main_menu())
+        await query.edit_message_text(text="Main Menu:", reply_markup=get_main_menu())
         return
 
     if cmd == "balance":
@@ -438,4 +438,5 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
+
 
