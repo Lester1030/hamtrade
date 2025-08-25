@@ -320,7 +320,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ----------------------------
     if uid in pending_affiliate and pending_affiliate[uid] == "redeem":
         if msg == "G7HA2N":
-            await update.message.reply_text("Code Redeemed ✅, on your next withdrawal, your transaction fee will be lowered from 13%, down to 4%.", reply_markup=get_affiliate_menu())
+            await update.message.reply_text("Code Redeemed ✅. On your next withdrawal, your transaction fee will be lowered from 13%, down to 4%.", reply_markup=get_affiliate_menu())
         else:
             await update.message.reply_text("Invalid Code ❌", reply_markup=get_affiliate_menu())
         pending_affiliate.pop(uid)
@@ -438,5 +438,6 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
+
 
 
