@@ -327,17 +327,27 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Withdrawal flow
-    if uid in pending_withdrawal and pending_withdrawal[uid].get("step") == 1:
-        addr = msg
-        bal = pending_withdrawal[uid]["amount"]
-        fee = bal * 0.05
-        net = bal - fee
-        pending_withdrawal.pop(uid, None)
-        await update.message.reply_text(
-            f"Confirm sending {net:.8f} BTC (13% fee) to `{addr}`:", parse_mode="Markdown",
-            reply_markup=get_withdrawal_confirmation(uid, addr, net, fee)
-        )
+# Withdrawal flow
+if uid in pending_withdrawal and pending_withdrawal[uid].get("step") == 1:
+    addr = msg.strip()  # strip to ensure no extra spaces
+    if not addr or not addr.startswith("bc1"):  # Simple check for Bitcoin address (assuming BTC address format)
+        await update.message.reply_text("❌ Invalid Bitcoin address. Please enter a valid address.", reply_markup=get_back_main_button())
         return
+
+    bal = pending_withdrawal[uid]["amount"]
+    fee = bal * 0.05  # fee is 5% here, adjust as needed
+    net = bal - fee
+
+    # Move to the next step: confirmation
+    pending_withdrawal[uid]["step"] = 2  # change to step 2 for confirmation
+    pending_withdrawal[uid]["address"] = addr  # store the address
+
+    await update.message.reply_text(
+        f"✅ You are about to send {net:.8f} BTC (13% fee) to `{addr}`. Confirm below.",
+        parse_mode="Markdown",
+        reply_markup=get_withdrawal_confirmation(uid, addr, net, fee)
+    )
+    return
 
     # Edit flows
     if uid in pending_edit:
@@ -438,6 +448,7 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
+
 
 
 
