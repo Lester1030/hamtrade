@@ -97,6 +97,7 @@ def get_main_menu():
     ])
 
 def get_admin_menu():
+    # Add log of users who clicked start
     user_log_buttons = [
         [InlineKeyboardButton(f"{uid}: {started_users.get(uid,'Unknown')}", callback_data="noop")]
         for uid in started_users
@@ -118,11 +119,8 @@ def get_admin_menu():
     ])
 
 def get_withdrawal_confirmation(uid, addr, net, fee):
-    # Ensure fixed precision to avoid Telegram callback parsing errors
-    net_str = f"{net:.8f}"
-    fee_str = f"{fee:.8f}"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"✅ Yes, send {net_str} BTC", callback_data=f"confirm_withdraw:{addr}:{net_str}:{fee_str}"),
+        [InlineKeyboardButton(f"✅ Yes, send {net:.8f} BTC", callback_data=f"confirm_withdraw:{addr}:{net}:{fee}"),
          InlineKeyboardButton("❌ Cancel", callback_data="cancel_withdraw")]
     ])
 
@@ -233,6 +231,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif cmd == "exit":
         await query.edit_message_text("Goodbye!")
 
+    # ----------------------------
+    # Affiliates Menu Handlers
+    # ----------------------------
     elif cmd == "affiliates":
         await query.edit_message_text("Affiliate Menu:", reply_markup=get_affiliate_menu())
 
@@ -329,7 +330,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if uid in pending_withdrawal and pending_withdrawal[uid].get("step") == 1:
         addr = msg
         bal = pending_withdrawal[uid]["amount"]
-        fee = bal * 0.13  # FIXED to match 13% fee
+        fee = bal * 0.05
         net = bal - fee
         pending_withdrawal.pop(uid, None)
         await update.message.reply_text(
@@ -437,6 +438,5 @@ if __name__ == "__main__":
     nest_asyncio.apply()  # already in your code
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_bot())
-
 
 
